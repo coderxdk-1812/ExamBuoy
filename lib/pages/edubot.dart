@@ -13,6 +13,14 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+  bool _isDarkMode = true;
+  String _selectedModel = "EduBot Smart";
+  final List<String> _models = [
+    "EduBot Smart",
+    "EduBot Pro",
+    "EduBot Advanced"
+  ];
 
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
@@ -26,7 +34,22 @@ class _ChatPageState extends State<ChatPage> {
       });
       geminiApi.chatWithGemini();
       _controller.clear();
+
+      // Scroll to bottom after sending message
+      Future.delayed(Duration(milliseconds: 100), () {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
     }
+  }
+
+  void _refreshPrompts() {
+    setState(() {
+      // Refresh prompts logic here
+    });
   }
 
   late GeminiApi geminiApi;
@@ -38,262 +61,422 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isSmallScreen = constraints.maxWidth < 600;
-        return Scaffold(
-          appBar: AppBar(
-            title: Stack(
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.chat_bubble_outline, color: Color(0xFFEFF1ED)),
-                    SizedBox(width: 8),
-                    Text(
-                      "StudyBuddy",
-                      style: TextStyle(color: Color(0xFFEFF1ED)),
-                    ),
-                  ],
-                ),
-                Center(
-                  child: Text(
-                    isSmallScreen ? "EduBot" : "EduBot",
-                    style: TextStyle(color: Color(0xFFEFF1ED)),
+    final backgroundColor = _isDarkMode ? Color(0xFF1A1A1A) : Color(0xFFE8F5E9);
+    final textColor = _isDarkMode ? Color(0xFFFFFFFF) : Color(0xFF1A1A1A);
+    final cardColor = _isDarkMode ? Color(0xFF2A2A2A) : Color(0xFFFFFFFF);
+    final userMessageColor =
+        _isDarkMode ? Color(0xFF3A3A3A) : Color(0xFFE0E0E0);
+    final aiMessageColor = _isDarkMode ? Color(0xFF2D2D2D) : Color(0xFFF5F5F5);
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: backgroundColor,
+        title: Row(
+          children: [
+            Icon(Icons.school_outlined, color: textColor, size: 24),
+            SizedBox(width: 12),
+            Text(
+              "EduBot",
+              style: TextStyle(
+                color: textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: Icon(Icons.model_training_outlined, color: textColor),
+            onSelected: (String value) {
+              setState(() {
+                _selectedModel = value;
+              });
+            },
+            itemBuilder: (BuildContext context) {
+              return _models.map((String model) {
+                return PopupMenuItem<String>(
+                  value: model,
+                  child: Row(
+                    children: [
+                      if (model == _selectedModel)
+                        Icon(Icons.check, size: 18, color: Colors.green),
+                      if (model == _selectedModel) SizedBox(width: 8),
+                      Text(model),
+                    ],
                   ),
+                );
+              }).toList();
+            },
+          ),
+          IconButton(
+            icon: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                color: textColor),
+            onPressed: () {
+              setState(() {
+                _isDarkMode = !_isDarkMode;
+              });
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.quiz_outlined, color: textColor),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RevisionPage()),
+              );
+            },
+          ),
+          SizedBox(width: 8),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Main chat area
+          Expanded(
+            child: ListenableBuilder(
+              listenable: geminiApi,
+              builder: (context, widget) {
+                if (geminiApi.chat.isEmpty) {
+                  // Welcome screen
+                  return Center(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // AI Avatar
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Color(0xFF4CAF50),
+                                  Color(0xFF81C784),
+                                ],
+                              ),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFF4CAF50).withOpacity(0.3),
+                                  blurRadius: 20,
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.psychology_outlined,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 32),
+                          Text(
+                            "Good ${_getGreeting()}!",
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            "Can I help you with anything?",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w500,
+                              color: textColor,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            "Choose a prompt below or write your own to start\nchatting with EduBot",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: textColor.withOpacity(0.6),
+                            ),
+                          ),
+                          SizedBox(height: 40),
+                          // Prompt suggestions
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              _buildPromptButton(
+                                "Get fresh perspectives on\ntricky problems",
+                                textColor,
+                                cardColor,
+                              ),
+                              _buildPromptButton(
+                                "Brainstorm creative ideas",
+                                textColor,
+                                cardColor,
+                              ),
+                              _buildPromptButton(
+                                "Summarize the book\nAtomic Habits",
+                                textColor,
+                                cardColor,
+                              ),
+                              _buildPromptButton(
+                                "Explain Einstein's theory\nof relativity",
+                                textColor,
+                                cardColor,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 24),
+                          TextButton.icon(
+                            onPressed: _refreshPrompts,
+                            icon: Icon(Icons.refresh,
+                                color: textColor.withOpacity(0.6)),
+                            label: Text(
+                              "Refresh prompts",
+                              style: TextStyle(
+                                color: textColor.withOpacity(0.6),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                // Chat messages
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  itemCount: geminiApi.chat.length,
+                  itemBuilder: (context, index) {
+                    final isUser = geminiApi.chat[index]['role'] == 'user';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: isUser
+                            ? MainAxisAlignment.end
+                            : MainAxisAlignment.start,
+                        children: [
+                          if (!isUser) ...[
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFF4CAF50),
+                                    Color(0xFF81C784)
+                                  ],
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.psychology_outlined,
+                                  color: Colors.white, size: 20),
+                            ),
+                            SizedBox(width: 12),
+                          ],
+                          Flexible(
+                            child: Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color:
+                                    isUser ? userMessageColor : aiMessageColor,
+                                borderRadius: BorderRadius.circular(16),
+                                border: !isUser
+                                    ? Border.all(
+                                        color: Colors.grey.withOpacity(0.2),
+                                        width: 1,
+                                      )
+                                    : null,
+                              ),
+                              child: isUser
+                                  ? Text(
+                                      geminiApi.chat[index]['parts'][0]['text'],
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontSize: 15,
+                                      ),
+                                    )
+                                  : AnimatedTextKit(
+                                      animatedTexts: [
+                                        TypewriterAnimatedText(
+                                          geminiApi.chat[index]['parts'][0]
+                                              ['text'],
+                                          textStyle: TextStyle(
+                                            fontSize: 15.0,
+                                            color: textColor,
+                                          ),
+                                          speed:
+                                              const Duration(milliseconds: 20),
+                                        ),
+                                      ],
+                                      totalRepeatCount: 1,
+                                      displayFullTextOnTap: true,
+                                      stopPauseOnTap: true,
+                                    ),
+                            ),
+                          ),
+                          if (isUser) ...[
+                            SizedBox(width: 12),
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Color(0xFF4CAF50),
+                              child: Icon(Icons.person,
+                                  color: Colors.white, size: 20),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          // Input area
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, -2),
                 ),
               ],
             ),
-            actions: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF304246),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => RevisionPage()),
-                  );
-                },
-                child: Text(
-                  "Revision Questions",
-                  style: TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-            backgroundColor: Color(0xFF0F272F),
-          ),
-          body: Stack(
-            children: [
-              ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  Colors.black.withOpacity(0.5),
-                  BlendMode.darken,
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('assets/mainbg.webp'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ),
-              Column(
+            child: SafeArea(
+              child: Row(
                 children: [
-                  ListenableBuilder(
-                    listenable: geminiApi,
-                    builder: (context, widget) {
-                      return Expanded(
-                        child: ListView.builder(
-                          itemCount: geminiApi.chat.length,
-                          itemBuilder: (context, index) {
-                            final isUser =
-                                geminiApi.chat[index]['role'] == 'user';
-                            return Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Align(
-                                alignment: isUser
-                                    ? Alignment.centerRight
-                                    : Alignment.centerLeft,
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth: constraints.maxWidth *
-                                        (isSmallScreen ? 0.9 : 0.75),
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isUser
-                                        ? Color(0xFF304246)
-                                        : Color(0xFF0F272F),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  padding: const EdgeInsets.all(12),
-                                  child: isUser
-                                      ? Text(
-                                          geminiApi.chat[index]['parts'][0]
-                                              ['text'],
-                                          style: TextStyle(
-                                            color: Color(0xFFEFF1ED),
-                                          ),
-                                        )
-                                      : AnimatedTextKit(
-                                          animatedTexts: [
-                                            TypewriterAnimatedText(
-                                              geminiApi.chat[index]['parts'][0]
-                                                  ['text'],
-                                              textStyle: const TextStyle(
-                                                fontSize: 15.0,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFFEFF1ED),
-                                              ),
-                                              speed: const Duration(
-                                                  milliseconds: 20),
-                                            ),
-                                          ],
-                                          totalRepeatCount: 1,
-                                          displayFullTextOnTap: true,
-                                          stopPauseOnTap: true,
-                                        ),
-                                ),
-                              ),
-                            );
-                          },
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.grey.withOpacity(0.3),
+                          width: 1,
                         ),
-                      );
-                    },
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(isSmallScreen ? 8.0 : 16.0),
-                    child: Wrap(
-                      spacing: isSmallScreen ? 8 : 20,
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              geminiApi.chat.add({
-                                "role": "user",
-                                "parts": [
-                                  {
-                                    "text":
-                                        "Summarize the book Atomic Habits by James Clear."
-                                  },
-                                ]
-                              });
-                              geminiApi.chatWithGemini();
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              color: Color(0xFFEFF1ED),
-                            ),
-                            child: Text(
-                              "Summarize the book Atomic Habits by James Clear.",
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              geminiApi.chat.add({
-                                "role": "user",
-                                "parts": [
-                                  {
-                                    "text":
-                                        "Give me a quick summary of the French Revolution."
-                                  },
-                                ]
-                              });
-                              geminiApi.chatWithGemini();
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              color: Color(0xFFEFF1ED),
-                            ),
-                            child: Text(
-                              "Give me a quick summary of the French Revolution.",
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              geminiApi.chat.add({
-                                "role": "user",
-                                "parts": [
-                                  {
-                                    "text":
-                                        "Explain Einstein's theory of relativity in simple terms."
-                                  },
-                                ]
-                              });
-                              geminiApi.chatWithGemini();
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              color: Color(0xFFEFF1ED),
-                            ),
-                            child: Text(
-                              "Explain Einstein's theory of relativity in simple terms.",
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(isSmallScreen ? 4.0 : 8.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: isSmallScreen ? 4.0 : 8.0),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 16),
+                          Expanded(
                             child: TextField(
                               controller: _controller,
-                              style: TextStyle(
-                                color: Color(0xFFEFF1ED),
-                              ),
+                              focusNode: _focusNode,
+                              style: TextStyle(color: textColor, fontSize: 15),
+                              maxLines: null,
+                              textInputAction: TextInputAction.send,
                               decoration: InputDecoration(
-                                hintText: "Type your message...",
-                                hintStyle: TextStyle(color: Color(0xFFEFF1ED)),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                hintText: "How can EduBot help you today?",
+                                hintStyle: TextStyle(
+                                  color: textColor.withOpacity(0.5),
+                                  fontSize: 15,
                                 ),
+                                border: InputBorder.none,
+                                contentPadding:
+                                    EdgeInsets.symmetric(vertical: 12),
                               ),
                               onSubmitted: (value) {
-                                _focusNode.unfocus(); // Unfocus the input field
                                 _sendMessage();
                               },
                             ),
                           ),
-                        ),
-                        SizedBox(width: isSmallScreen ? 4 : 8),
-                        IconButton(
-                          onPressed: () {
-                            _sendMessage();
-                          },
-                          icon:
-                              const Icon(Icons.send, color: Color(0xFFEFF1ED)),
-                        ),
-                      ],
+                          SizedBox(width: 8),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: _sendMessage,
+                      icon: Icon(Icons.arrow_upward, color: Colors.white),
+                      padding: EdgeInsets.all(12),
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        );
-      },
+          // Model selector at bottom
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: cardColor,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "$_selectedModel",
+                  style: TextStyle(
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 12,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.verified, color: Colors.blue, size: 14),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildPromptButton(String text, Color textColor, Color cardColor) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          geminiApi.chat.add({
+            "role": "user",
+            "parts": [
+              {"text": text.replaceAll('\n', ' ')}
+            ],
+          });
+        });
+        geminiApi.chatWithGemini();
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.grey.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'evening';
   }
 }

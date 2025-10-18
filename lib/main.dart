@@ -1,4 +1,4 @@
-import 'package:exambuoy_trial/pages/edubot.dart';
+import 'package:exambuoy_trial/pages/home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -13,13 +13,17 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false, // Remove debug banner
+      debugShowCheckedModeBanner: false,
       title: 'StudyBuddy',
       theme: ThemeData(
-        primaryColor:
-            Color(0xFF1C2541), // Set the primary color to the desired hex code
+        primaryColor: Color(0xFF4CAF50),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Color(0xFF4CAF50),
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
       ),
-      home: const ChatPage(),
+      home: const HomePage(),
     );
   }
 }

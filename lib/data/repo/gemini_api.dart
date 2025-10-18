@@ -12,7 +12,7 @@ class GeminiApi with ChangeNotifier {
     try {
       final res = await http.post(
         Uri.parse(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$geminiKey'),
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$geminiKey'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -31,7 +31,7 @@ class GeminiApi with ChangeNotifier {
         String val = jsonDecode(res.body)['candidates'][0]['content']['parts']
             [0]['text'];
         // content = content.trim();
-        // print(res.body);
+        print(res.body);
         chat.add({
           "role": "model",
           "parts": [
