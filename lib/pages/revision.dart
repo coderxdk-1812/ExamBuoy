@@ -1,5 +1,6 @@
-import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:exambuoy_trial/data/repo/gemini_api.dart';
+import 'package:exambuoy_trial/widgets/animated_markdown.dart';
+import 'package:exambuoy_trial/widgets/typing_indicator.dart';
 import 'package:flutter/material.dart';
 
 List<String> list = <String>['Easy', 'Medium', 'Hard'];
@@ -46,6 +47,7 @@ class _RevisionPageState extends State<RevisionPage> {
   String? numQuestions;
   String? subject;
   bool _isDarkMode = true;
+  bool _isLoading = false;
   String _selectedModel = "RevisionBot Smart";
   final List<String> _models = [
     "RevisionBot Smart",
@@ -53,33 +55,52 @@ class _RevisionPageState extends State<RevisionPage> {
     "RevisionBot Advanced"
   ];
 
-  void _sendMessage() {
+  void _sendMessage() async {
     if (_controller.text.isNotEmpty &&
         subject != null &&
         dificultyValue != null &&
         dropdownValue2 != null &&
         numQuestions != null) {
       setState(() {
+        _isLoading = true;
         geminiApi.chat.add({
           "role": "user",
           "parts": [
             {
               "text":
-                  "Generate ${numQuestions} questions for the subject ${subject}, focusing on the topic(s) ${_controller.text.trim()}. The difficulty level should be ${dificultyValue}, and the questions should be at ${dropdownValue2} level."
+                  "Generate $numQuestions questions for the subject $subject, focusing on the topic(s) ${_controller.text.trim()}. The difficulty level should be $dificultyValue, and the questions should be at $dropdownValue2 level."
             },
           ]
         });
       });
-      geminiApi.revisionWithGemini();
       _controller.clear();
 
       // Scroll to bottom after sending message
       Future.delayed(Duration(milliseconds: 100), () {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+
+      await geminiApi.revisionWithGemini();
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Scroll to show the response
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -259,8 +280,18 @@ class _RevisionPageState extends State<RevisionPage> {
                 return ListView.builder(
                   controller: _scrollController,
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  itemCount: geminiApi.chat.length,
+                  itemCount: geminiApi.chat.length + (_isLoading ? 1 : 0),
                   itemBuilder: (context, index) {
+                    // Show loading indicator at the end
+                    if (_isLoading && index == geminiApi.chat.length) {
+                      return AILoadingWidget(
+                        avatarColor: Color(0xFF6A1B9A),
+                        icon: Icons.auto_awesome,
+                        message: "RevisionBot is generating your questions...",
+                        textColor: textColor,
+                      );
+                    }
+
                     final isUser = geminiApi.chat[index]['role'] == 'user';
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
@@ -310,23 +341,27 @@ class _RevisionPageState extends State<RevisionPage> {
                                         fontSize: 15,
                                       ),
                                     )
-                                  : AnimatedTextKit(
-                                      animatedTexts: [
-                                        TypewriterAnimatedText(
-                                          geminiApi.chat[index]['parts'][0]
-                                              ['text'],
+                                  : (index == geminiApi.chat.length - 1 &&
+                                          geminiApi.chat[index]['role'] ==
+                                              'model')
+                                      ? AnimatedMarkdown(
+                                          data: geminiApi.chat[index]['parts']
+                                              [0]['text'],
                                           textStyle: TextStyle(
                                             fontSize: 15.0,
                                             color: textColor,
                                           ),
                                           speed:
                                               const Duration(milliseconds: 20),
+                                        )
+                                      : StaticMarkdown(
+                                          data: geminiApi.chat[index]['parts']
+                                              [0]['text'],
+                                          textStyle: TextStyle(
+                                            fontSize: 15.0,
+                                            color: textColor,
+                                          ),
                                         ),
-                                      ],
-                                      totalRepeatCount: 1,
-                                      displayFullTextOnTap: true,
-                                      stopPauseOnTap: true,
-                                    ),
                             ),
                           ),
                           if (isUser) ...[

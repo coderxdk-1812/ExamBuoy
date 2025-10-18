@@ -55,7 +55,7 @@ class GeminiApi with ChangeNotifier {
     try {
       final res = await http.post(
         Uri.parse(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$geminiKey'),
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$geminiKey'),
         headers: {
           'Content-Type': 'application/json',
         },

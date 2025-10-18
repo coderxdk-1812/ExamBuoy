@@ -1,6 +1,7 @@
-import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:exambuoy_trial/data/repo/gemini_api.dart';
 import 'package:exambuoy_trial/pages/revision.dart';
+import 'package:exambuoy_trial/widgets/animated_markdown.dart';
+import 'package:exambuoy_trial/widgets/typing_indicator.dart';
 import 'package:flutter/material.dart';
 
 class ChatPage extends StatefulWidget {
@@ -15,6 +16,7 @@ class _ChatPageState extends State<ChatPage> {
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   bool _isDarkMode = true;
+  bool _isLoading = false;
   String _selectedModel = "EduBot Smart";
   final List<String> _models = [
     "EduBot Smart",
@@ -22,9 +24,10 @@ class _ChatPageState extends State<ChatPage> {
     "EduBot Advanced"
   ];
 
-  void _sendMessage() {
+  void _sendMessage() async {
     if (_controller.text.isNotEmpty) {
       setState(() {
+        _isLoading = true;
         geminiApi.chat.add({
           "role": "user",
           "parts": [
@@ -32,16 +35,34 @@ class _ChatPageState extends State<ChatPage> {
           ]
         });
       });
-      geminiApi.chatWithGemini();
       _controller.clear();
 
       // Scroll to bottom after sending message
       Future.delayed(Duration(milliseconds: 100), () {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+
+      await geminiApi.chatWithGemini();
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Scroll to show the response
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
       });
     }
   }
@@ -253,8 +274,17 @@ class _ChatPageState extends State<ChatPage> {
                 return ListView.builder(
                   controller: _scrollController,
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  itemCount: geminiApi.chat.length,
+                  itemCount: geminiApi.chat.length + (_isLoading ? 1 : 0),
                   itemBuilder: (context, index) {
+                    // Show loading indicator at the end
+                    if (_isLoading && index == geminiApi.chat.length) {
+                      return AILoadingWidget(
+                        avatarColor: Color(0xFF4CAF50),
+                        icon: Icons.psychology_outlined,
+                        message: "EduBot is crafting your response...",
+                        textColor: textColor,
+                      );
+                    }
                     final isUser = geminiApi.chat[index]['role'] == 'user';
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
@@ -304,23 +334,27 @@ class _ChatPageState extends State<ChatPage> {
                                         fontSize: 15,
                                       ),
                                     )
-                                  : AnimatedTextKit(
-                                      animatedTexts: [
-                                        TypewriterAnimatedText(
-                                          geminiApi.chat[index]['parts'][0]
-                                              ['text'],
+                                  : (index == geminiApi.chat.length - 1 &&
+                                          geminiApi.chat[index]['role'] ==
+                                              'model')
+                                      ? AnimatedMarkdown(
+                                          data: geminiApi.chat[index]['parts']
+                                              [0]['text'],
                                           textStyle: TextStyle(
                                             fontSize: 15.0,
                                             color: textColor,
                                           ),
                                           speed:
                                               const Duration(milliseconds: 20),
+                                        )
+                                      : StaticMarkdown(
+                                          data: geminiApi.chat[index]['parts']
+                                              [0]['text'],
+                                          textStyle: TextStyle(
+                                            fontSize: 15.0,
+                                            color: textColor,
+                                          ),
                                         ),
-                                      ],
-                                      totalRepeatCount: 1,
-                                      displayFullTextOnTap: true,
-                                      stopPauseOnTap: true,
-                                    ),
                             ),
                           ),
                           if (isUser) ...[
@@ -440,8 +474,9 @@ class _ChatPageState extends State<ChatPage> {
 
   Widget _buildPromptButton(String text, Color textColor, Color cardColor) {
     return InkWell(
-      onTap: () {
+      onTap: () async {
         setState(() {
+          _isLoading = true;
           geminiApi.chat.add({
             "role": "user",
             "parts": [
@@ -449,7 +484,34 @@ class _ChatPageState extends State<ChatPage> {
             ],
           });
         });
-        geminiApi.chatWithGemini();
+
+        // Scroll to bottom
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+
+        await geminiApi.chatWithGemini();
+
+        setState(() {
+          _isLoading = false;
+        });
+
+        // Scroll to show the response
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
