@@ -67,12 +67,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void _refreshPrompts() {
-    setState(() {
-      // Refresh prompts logic here
-    });
-  }
-
   late GeminiApi geminiApi;
   @override
   void initState() {
@@ -253,17 +247,17 @@ class _ChatPageState extends State<ChatPage> {
                             ],
                           ),
                           SizedBox(height: 24),
-                          TextButton.icon(
-                            onPressed: _refreshPrompts,
-                            icon: Icon(Icons.refresh,
-                                color: textColor.withOpacity(0.6)),
-                            label: Text(
-                              "Refresh prompts",
-                              style: TextStyle(
-                                color: textColor.withOpacity(0.6),
-                              ),
-                            ),
-                          ),
+                          // TextButton.icon(
+                          //   onPressed: _refreshPrompts,
+                          //   icon: Icon(Icons.refresh,
+                          //       color: textColor.withOpacity(0.6)),
+                          //   label: Text(
+                          //     "Refresh prompts",
+                          //     style: TextStyle(
+                          //       color: textColor.withOpacity(0.6),
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
