@@ -1,11 +1,11 @@
 {
-    "name": "exambuoy_trial",
-    "short_name": "exambuoy_trial",
+    "name": "ReviseBot",
+    "short_name": "ReviseBot",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "ReviseBot is a tool that helps you revise your notes.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
